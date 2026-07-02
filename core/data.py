@@ -1,0 +1,236 @@
+import math
+
+SHIP_COUNTER = [0]
+
+class Files:
+
+    def __init__(self):
+        self.game_path = None
+
+    def set_game_path(self, game_path):
+        self.game_path = game_path
+
+
+class Fleet:
+
+    def __init__(self, view, mouse):
+        self.ships = []
+        self.view = view
+        self.mouse = mouse
+        self.target_pos_x = 0
+        self.target_pos_y = 0
+
+        self.canvas = None
+        self.center_x = None
+        self.center_y = None
+
+        self.target_ids = None
+
+    def update_fleet(self, event):
+        for s in self.ships:
+            s.update_ship(event)
+        self.draw_target()
+
+    def click(self, event):
+        self.mouse[0][0] = event.x
+        self.mouse[0][1] = event.y
+        self.mouse[1][0] = event.x
+        self.mouse[1][1] = event.y
+
+        for s in self.ships:
+            s.update_handle_focus(event)
+
+    def right_click(self, event):
+        self.target_pos_x =   event.x - self.center_x - self.view[0]
+        self.target_pos_y = - event.y + self.center_y + self.view[1]
+        self.draw_target()
+
+    def draw_target(self):
+        if self.target_ids:
+            for i in self.target_ids:
+                self.canvas.delete(i)
+
+        id1 = self.canvas.create_line(
+                self.target_pos_x - 5 + self.center_x + self.view[0],
+              - self.target_pos_y - 5 + self.center_y + self.view[1],
+                self.target_pos_x + 6 + self.center_x + self.view[0],
+              - self.target_pos_y + 6 + self.center_y + self.view[1],
+                fill="blue")
+        id2 = self.canvas.create_line(
+                self.target_pos_x - 5 + self.center_x + self.view[0],
+              - self.target_pos_y + 5 + self.center_y + self.view[1],
+                self.target_pos_x + 6 + self.center_x + self.view[0],
+              - self.target_pos_y - 6 + self.center_y + self.view[1],
+                fill="blue")
+
+        self.target_ids = (id1, id2)
+        
+    def release(self, event):
+        self.mouse[2][0] = event.x
+        self.mouse[2][1] = event.y
+
+        for s in self.ships:
+            s.handle_focus = 0
+
+    def drag(self, event):
+
+        handle_dragged = False
+
+        for s in self.ships:
+            handle_dragged |= s.drag_handle(event)
+
+        if handle_dragged:
+            return
+
+        self.view[0] += event.x - self.mouse[1][0]
+        self.view[1] += event.y - self.mouse[1][1]
+
+        self.update_fleet(event)
+
+        self.mouse[1][0] = event.x
+        self.mouse[1][1] = event.y
+
+
+class Ship:
+
+    def __init__(self, ship_data, canvas, view, mouse, fleet):
+
+        self.ship_id = SHIP_COUNTER[0]
+        SHIP_COUNTER[0] += 1
+
+        self.fleet = fleet
+
+        self.data = ship_data
+        self.canvas = canvas
+
+        self.canvas_ship_id = None
+        self.canvas_move_handle_id = None
+        self.canvas_rotate_handle_id = None
+
+        self.center_x = self.canvas.winfo_width()  // 2 - 1
+        self.center_y = self.canvas.winfo_height() // 2 - 1
+
+        self.view = view
+        self.mouse = mouse
+
+        self.pos_x = -view[0]
+        self.pos_y = view[1]
+        self.rot = 0
+
+        self.handle_focus = 0
+
+        self.draw()
+
+    def _translate(self, x, y):
+        return (self.center_x + self.pos_x + x,
+                self.center_y - self.pos_y - y)
+
+
+    def _rotate_translate(self, x, y, rot=None):
+        if not rot:
+            rot = self.rot
+
+        def norm(x, y):
+            return (x**2 + y**2)**(1/2)
+        def add_angle(x, y):
+            return math.atan2(x, y) + rot
+        def rotate_comp(x, y, f):
+            return f(add_angle(x, y)) * norm(x, y)
+        return (self.center_x + self.view[0] + self.pos_x + rotate_comp(x, y, math.cos),
+                self.center_y + self.view[1] - self.pos_y - rotate_comp(x, y, math.sin))
+
+    def update_ship(self, event):
+        self.draw(event)
+        # print(self.data["name"], self.handle_focus)
+
+    def update_handle_focus(self, event):
+        mx1, my1, mx2, my2 = self.get_handle_bounds(0, 0)
+        rx1, ry1, rx2, ry2 = self.get_handle_bounds(30, 30)
+
+        if (mx1 <= event.x <= mx2) and (my1 <= event.y <= my2):
+            self.handle_focus = 1
+        elif (rx1 <= event.x <= rx2) and (ry1 <= event.y <= ry2):
+            self.handle_focus = 2
+        else:
+            self.handle_focus = 0
+
+    def drag_handle(self, event):
+
+        def norm(x, y):
+            return (x**2 + y**2)**(1/2)
+
+        if self.handle_focus == 0:
+            return False
+
+        if self.handle_focus == 1:
+            self.pos_x += - self.pos_x - self.view[0] + event.x - self.center_x
+            self.pos_y += - self.pos_y + self.view[1] - event.y + self.center_y
+        if self.handle_focus == 2:
+            self.rot = - math.pi/4 + math.atan2(
+                - self.pos_y + self.view[1] - event.y + self.center_y,
+                - self.pos_x - self.view[0] + event.x - self.center_x)
+
+        self.update_ship(event)
+
+        return True
+
+    def draw(self, event=None):
+        self.draw_ship()
+
+        if not event:
+            return
+
+        def norm(x, y):
+            return (x**2 + y**2)**(1/2)
+
+        distance = norm(event.x - self.center_x - self.view[0] - self.pos_x,
+                        event.y - self.center_y - self.view[1] + self.pos_y)
+
+        if distance < 50:
+            self.draw_move_handle()
+            self.draw_rotate_handle()
+        else:
+            self.clear_move_handle()
+            self.clear_rotate_handle()
+
+    def clear_ship(self):
+        if self.canvas_ship_id:
+            self.canvas.delete(self.canvas_ship_id)
+            self.canvas_ship_id = None
+
+    def draw_ship(self):
+        self.clear_ship()
+        rotated = [
+            coord
+            for x, y in zip(self.data["bounds"][::2], self.data["bounds"][1::2])
+            for coord in self._rotate_translate(x, y)
+        ]
+
+        self.canvas_ship_id = self.canvas.create_polygon(rotated, fill="white")
+
+    def get_handle_bounds(self, cx, cy):
+        return tuple(i+j for i in (-3, 3) for j in self._rotate_translate(cx, cy))
+
+    def clear_move_handle(self):
+        if self.canvas_move_handle_id:
+            self.canvas.delete(self.canvas_move_handle_id)
+            self.canvas_move_handle_id = None
+
+    def draw_move_handle(self):
+        self.clear_move_handle()
+
+        self.canvas_move_handle_id = self.canvas.create_rectangle(
+                *self.get_handle_bounds(0, 0),
+                fill="green")
+
+    def clear_rotate_handle(self):
+        if self.canvas_rotate_handle_id:
+            self.canvas.delete(self.canvas_rotate_handle_id)
+            self.canvas_rotate_handle_id = None
+
+    def draw_rotate_handle(self):
+        self.clear_rotate_handle()
+
+        self.canvas_rotate_handle_id = self.canvas.create_rectangle(
+                *self.get_handle_bounds(30, 30),
+                fill="red")
