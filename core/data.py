@@ -119,6 +119,9 @@ class Ship:
 
         self.handle_focus = 0
 
+        self.weapons = {k["id"] : None for k in self.data["weaponSlots"]}
+        self.weapons_canvas_ids = {k["id"] : None for k in self.data["weaponSlots"]}
+
         self.draw()
 
     def _translate(self, x, y):
@@ -141,7 +144,6 @@ class Ship:
 
     def update_ship(self, event):
         self.draw(event)
-        # print(self.data["name"], self.handle_focus)
 
     def update_handle_focus(self, event):
         mx1, my1, mx2, my2 = self.get_handle_bounds(0, 0)
@@ -176,6 +178,7 @@ class Ship:
 
     def draw(self, event=None):
         self.draw_ship()
+        self.draw_weapon_arcs()
 
         if not event:
             return
@@ -207,6 +210,14 @@ class Ship:
         ]
 
         self.canvas_ship_id = self.canvas.create_polygon(rotated, fill="white")
+
+    def draw_weapon_arcs(self):
+        for slot in self.data["weaponSlots"]:
+            if self.weapons_canvas_ids[slot["id"]]:
+                self.canvas.delete(self.weapons_canvas_ids[slot["id"]])
+            self.weapons_canvas_ids[slot["id"]] = self.canvas.create_rectangle(
+                *tuple(i - 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])),
+                *tuple(i + 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])))
 
     def get_handle_bounds(self, cx, cy):
         return tuple(i+j for i in (-3, 3) for j in self._rotate_translate(cx, cy))
