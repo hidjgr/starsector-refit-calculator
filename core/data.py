@@ -120,7 +120,8 @@ class Ship:
         self.handle_focus = 0
 
         self.weapons = {k["id"] : None for k in self.data["weaponSlots"]}
-        self.weapons_canvas_ids = {k["id"] : None for k in self.data["weaponSlots"]}
+                                             #sqr  #arc  #barc #sde1 #sde2
+        self.weapon_canvas_ids = {k["id"] : [None, None, None, None, None] for k in self.data["weaponSlots"]}
 
         self.draw()
 
@@ -139,8 +140,8 @@ class Ship:
             return math.atan2(x, y) + rot
         def rotate_comp(x, y, f):
             return f(add_angle(x, y)) * norm(x, y)
-        return (self.center_x + self.view[0] + self.pos_x + rotate_comp(x, y, math.cos),
-                self.center_y + self.view[1] - self.pos_y - rotate_comp(x, y, math.sin))
+        return (self.center_x + self.view[0] + self.pos_x + rotate_comp(x, -y, math.cos),
+                self.center_y + self.view[1] - self.pos_y - rotate_comp(x, -y, math.sin))
 
     def update_ship(self, event):
         self.draw(event)
@@ -178,7 +179,7 @@ class Ship:
 
     def draw(self, event=None):
         self.draw_ship()
-        self.draw_weapon_arcs()
+        self.draw_weapons()
 
         if not event:
             return
@@ -211,16 +212,52 @@ class Ship:
 
         self.canvas_ship_id = self.canvas.create_polygon(rotated, fill="white")
 
-    def draw_weapon_arcs(self):
+    def get_arc_points(self, cx, cy, radius, direction, angle, sides=30):
+        direction *= math.pi/180
+        angle *= math.pi/180
+        points = []
+        for i in range(sides+1):
+            point = direction - angle/2 + i * angle/sides
+            points.append(cx - math.sin(point) * radius)
+            points.append(cy - math.cos(point) * radius)
+        return points
+
+    def draw_arc(self, points):
+        return self.canvas.create_line(points, fill="grey")
+
+    def draw_weapons(self):
         for slot in self.data["weaponSlots"]:
-            if self.weapons_canvas_ids[slot["id"]]:
-                self.canvas.delete(self.weapons_canvas_ids[slot["id"]])
-            self.weapons_canvas_ids[slot["id"]] = self.canvas.create_rectangle(
+
+            if slot["mount"] == "HIDDEN" or slot["type"] in ("SYSTEM", "DECORATIVE", "STATION_MODULE"):
+                continue
+
+            for i in range(5):
+                if self.weapon_canvas_ids[slot["id"]][i]:
+                    self.canvas.delete(self.weapon_canvas_ids[slot["id"]][i])
+                    self.weapon_canvas_ids[slot["id"]][i] = None
+
+            self.weapon_canvas_ids[slot["id"]][0] = self.canvas.create_rectangle(
                 *tuple(i - 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])),
                 *tuple(i + 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])))
 
+            arc_points = self.get_arc_points(
+                    *self._rotate_translate(slot["locations"][0],
+                                            slot["locations"][1]),
+                    50, slot["angle"]+self.rot*180/math.pi, slot["arc"])
+
+            back_arc_points = self.get_arc_points(
+                    *self._rotate_translate(slot["locations"][0],
+                                            slot["locations"][1]),
+                    10, (180+slot["angle"]+self.rot*180/math.pi)%360, 360-slot["arc"])
+
+            self.weapon_canvas_ids[slot["id"]][1] = self.draw_arc(arc_points)
+            self.weapon_canvas_ids[slot["id"]][2] = self.draw_arc(back_arc_points)
+
+            self.weapon_canvas_ids[slot["id"]][3] = self.canvas.create_line(arc_points[:2], back_arc_points[-2:], fill="grey")
+            self.weapon_canvas_ids[slot["id"]][4] = self.canvas.create_line(arc_points[-2:], back_arc_points[:2], fill="grey")
+
     def get_handle_bounds(self, cx, cy):
-        return tuple(i+j for i in (-3, 3) for j in self._rotate_translate(cx, cy))
+        return tuple(i+j for i in (-3, 3) for j in self._rotate_translate(cx, -cy))
 
     def clear_move_handle(self):
         if self.canvas_move_handle_id:

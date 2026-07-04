@@ -22,6 +22,7 @@ def get_game_path(game_path):
         print("Error: directory does not exist")
         exit(1)
 
+
 def _parse_field(key, value):
     if match("^[0-9]+$", value):
         return int(value)
@@ -32,6 +33,7 @@ def _parse_field(key, value):
     elif key in ["hints", "tags"]:
         return value.split(", ")
     return value
+
 
 def list_ships():
     with open(files.game_path + "/hulls/ship_data.csv", "r") as f:
@@ -62,7 +64,6 @@ def list_weapons():
                 for k, v in row.items():
                     new_weapon[k] = _parse_field(k, v)
                 try:
-                    print(new_weapon["id"])
                     with open(files.game_path + f"/weapons/{new_weapon['id']}.wpn", "r") as g:
                         text = "".join(row.split("#", 1)[0] for row in g)
 
@@ -76,7 +77,7 @@ def list_weapons():
 
                     text = text.replace(";", ",")
 
-                    weapon = json.loads(text)
+                    new_weapon |= json.loads(text)
 
                 except json.JSONDecodeError as e:
                     print(f"Line {e.lineno}, column {e.colno}")
@@ -86,6 +87,7 @@ def list_weapons():
                     print(f"File not found: {new_weapon['id']}.wpn")
                 weapons.append(new_weapon)
         return weapons
+
         
 def new_battle():
     pass

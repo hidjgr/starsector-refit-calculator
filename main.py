@@ -6,5 +6,4 @@ get_game_path(sys.argv)
 
 from ui.gui import root
 
-
 root.mainloop()
