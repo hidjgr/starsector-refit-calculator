@@ -95,16 +95,30 @@ def ship_card(parent, ship):
     rowframe.pack(fill="x", expand=True)
     return rowframe
 
-sroot1, scanvas1 = scrolling_canvas(main, 500//3, 200)
-sroot1.grid(row=0, column=1)
-sroot2, scanvas2 = scrolling_canvas(main, 500//3, 200)
-sroot2.grid(row=1, column=1)
-sroot3, scanvas3 = scrolling_canvas(main, 500//3, 200)
-sroot3.grid(row=2, column=1)
+def ship_stat(parent, ship, label, modifiable=lambda x: True):
+    rowframe = tk.Frame(parent)
+    label = tk.Label(rowframe, bd=1, relief="solid", pady=0, text=label, highlightthickness=0)
+    label.pack(side="left", fill="x", expand=True, padx=0, pady=0)
+    rowframe.pack(fill="x", expand=True)
+    return rowframe
+
+ship_list_root, ship_list = scrolling_canvas(main, 500//3, 200)
+ship_list_root.grid(row=0, column=1)
+
+ship_stats_root, ship_stats = scrolling_canvas(main, 500//3, 200)
+ship_stats_root.grid(row=1, column=1)
+
+weapon_list_root, weapon_list = scrolling_canvas(main, 500//3, 200)
+weapon_list_root.grid(row=2, column=1)
+
+MOCK_FLEET.ship_stats_gui = ship_stats
+MOCK_FLEET.weapon_list_gui = weapon_list
+MOCK_FLEET.gui_callbacks["ship_card"] = ship_card
+MOCK_FLEET.gui_callbacks["ship_stats"] = ship_stat
 
 for s in api.list_ships():
     if s["name"]:
         if (("bounds" in s)
             and not (s["hints"] and "UNBOARDABLE" in s["hints"])
             and (s["hullSize"] != "FIGHTER")):
-            ship_card(scanvas1, s)#s["name"], s["bounds"])
+            ship_card(ship_list, s)

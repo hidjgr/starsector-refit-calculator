@@ -26,6 +26,13 @@ class Fleet:
 
         self.target_ids = None
 
+        self.focused_ship = None
+
+        self.ship_stats_gui = None
+        self.weapon_list_gui = None
+
+        self.gui_callbacks = {}
+
     def update_fleet(self, event):
         for s in self.ships:
             s.update_ship(event)
@@ -38,7 +45,12 @@ class Fleet:
         self.mouse[1][1] = event.y
 
         for s in self.ships:
-            s.update_handle_focus(event)
+            if s.update_handle_focus(event) or s.update_slot_focus(event):
+                self.focused_ship = s.ship_id
+                for v in list(self.ship_stats_gui.children.values()):
+                    v.destroy()
+                self.gui_callbacks["ship_stats"](self.ship_stats_gui, s, "test")
+                
 
     def right_click(self, event):
         self.target_pos_x =   event.x - self.center_x - self.view[0]
@@ -106,6 +118,8 @@ class Ship:
         self.canvas_ship_id = None
         self.canvas_move_handle_id = None
         self.canvas_rotate_handle_id = None
+                                             #sqr  #arc  #barc #sde1 #sde2
+        self.weapon_canvas_ids = {k["id"] : [None, None, None, None, None] for k in self.data["weaponSlots"]}
 
         self.center_x = self.canvas.winfo_width()  // 2 - 1
         self.center_y = self.canvas.winfo_height() // 2 - 1
@@ -120,8 +134,10 @@ class Ship:
         self.handle_focus = 0
 
         self.weapons = {k["id"] : None for k in self.data["weaponSlots"]}
-                                             #sqr  #arc  #barc #sde1 #sde2
-        self.weapon_canvas_ids = {k["id"] : [None, None, None, None, None] for k in self.data["weaponSlots"]}
+
+        self.hullmods = []
+
+        self.focused_slot = None
 
         self.draw()
 
@@ -151,11 +167,32 @@ class Ship:
         rx1, ry1, rx2, ry2 = self.get_handle_bounds(30, 30)
 
         if (mx1 <= event.x <= mx2) and (my1 <= event.y <= my2):
+            for s in self.fleet.ships:
+                s.handle_focus = 0
             self.handle_focus = 1
+            return True
         elif (rx1 <= event.x <= rx2) and (ry1 <= event.y <= ry2):
+            for s in self.fleet.ships:
+                s.handle_focus = 0
             self.handle_focus = 2
-        else:
-            self.handle_focus = 0
+            return True
+        self.handle_focus = 0
+        return False
+
+    def update_slot_focus(self, event):
+        for slot in self.data["weaponSlots"]:
+
+            if slot["mount"] == "HIDDEN" or slot["type"] in ("SYSTEM", "DECORATIVE", "STATION_MODULE"):
+                continue
+
+            sx1, sy1, sx2, sy2 = self.get_handle_bounds(slot["locations"][0], -slot["locations"][1])
+
+            if (sx1 <= event.x <= sx2) and (sy1 <= event.y <= sy2):
+                self.focused_slot = slot["id"]
+                return True
+        self.focused_slot = None
+        return False
+
 
     def drag_handle(self, event):
 
@@ -237,8 +274,7 @@ class Ship:
                     self.weapon_canvas_ids[slot["id"]][i] = None
 
             self.weapon_canvas_ids[slot["id"]][0] = self.canvas.create_rectangle(
-                *tuple(i - 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])),
-                *tuple(i + 3 for i in self._rotate_translate(slot["locations"][0], slot["locations"][1])))
+                    *self.get_handle_bounds(slot["locations"][0], -slot["locations"][1]))
 
             arc_points = self.get_arc_points(
                     *self._rotate_translate(slot["locations"][0],
