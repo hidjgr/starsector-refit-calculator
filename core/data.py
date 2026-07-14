@@ -28,7 +28,7 @@ class Fleet:
 
         self.focused_ship = None
 
-        self.ship_stats_gui = None
+        self.ship_stats_window = None
         self.weapon_list_gui = None
 
         self.gui_callbacks = {}
@@ -47,10 +47,12 @@ class Fleet:
         for s in self.ships:
             if s.update_handle_focus(event) or s.update_slot_focus(event):
                 self.focused_ship = s.ship_id
-                for v in list(self.ship_stats_gui.children.values()):
-                    v.destroy()
-                self.gui_callbacks["ship_stats"](self.ship_stats_gui, s, "test")
+                self.update_window(self.ship_stats_window, s.show_stats)
                 
+    def update_window(self, win, source):
+        for v in list(win.children.values()):
+            v.destroy()
+        source(lambda *args: self.gui_callbacks["list_item"](win, *args))
 
     def right_click(self, event):
         self.target_pos_x =   event.x - self.center_x - self.view[0]
@@ -135,9 +137,11 @@ class Ship:
 
         self.weapons = {k["id"] : None for k in self.data["weaponSlots"]}
 
-        self.hullmods = []
-
         self.focused_slot = None
+
+        self.capacitors = 0
+        self.vents = 0
+        self.hullmods = []
 
         self.draw()
 
@@ -318,3 +322,15 @@ class Ship:
         self.canvas_rotate_handle_id = self.canvas.create_rectangle(
                 *self.get_handle_bounds(30, 30),
                 fill="red")
+
+    def show_stats(self, callback):
+
+        def change_attr(attr, value):
+            if attr == "cap":
+                self.capacitors += value
+            if attr == "vent":
+                self.vents += value
+            self.fleet.update_window(self.fleet.ship_stats_window, self.show_stats)
+
+        callback("Capacitors: " + str(self.capacitors), (("-", None, lambda x: change_attr("cap", -1)), ("+", None, lambda x: change_attr("cap", 1))))
+        callback("Vent: " + str(self.vents), (("-", None, lambda x: change_attr("vent", -1)), ("+", None, lambda x: change_attr("vent", 1))))

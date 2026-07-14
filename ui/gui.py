@@ -84,21 +84,18 @@ def scrolling_canvas(parent, height, width):
     
     return root, inner_frame
 
-def ship_card(parent, ship):
-    rowframe = tk.Frame(parent)
-    label = tk.Label(rowframe, bd=1, relief="solid", pady=0, text=ship["name"], highlightthickness=0)
-    button = tk.Button(rowframe, text="+",
-                       command=lambda: MOCK_FLEET.ships.append(Ship(ship, view_port, view, mouse, MOCK_FLEET)),
-                       padx=4, pady=0, highlightthickness=0)
-    label.pack(side="left", fill="x", expand=True, padx=0, pady=0)
-    button.pack(side="right", padx=0, pady=0)
-    rowframe.pack(fill="x", expand=True)
-    return rowframe
-
-def ship_stat(parent, ship, label, modifiable=lambda x: True):
+def list_item(parent, label, buttons=None):
     rowframe = tk.Frame(parent)
     label = tk.Label(rowframe, bd=1, relief="solid", pady=0, text=label, highlightthickness=0)
     label.pack(side="left", fill="x", expand=True, padx=0, pady=0)
+    if buttons:
+        button_widgets = []
+        for b_lbl, b_var, b_cmd in buttons:
+            button_widgets.append(tk.Button(rowframe,
+                                            text=b_lbl, command=lambda f=b_cmd, x=b_var: f(x),
+                                            padx=4, pady=0, highlightthickness=0))
+        for b in button_widgets:
+            b.pack(side="right", padx=0, pady=0)
     rowframe.pack(fill="x", expand=True)
     return rowframe
 
@@ -111,14 +108,13 @@ ship_stats_root.grid(row=1, column=1)
 weapon_list_root, weapon_list = scrolling_canvas(main, 500//3, 200)
 weapon_list_root.grid(row=2, column=1)
 
-MOCK_FLEET.ship_stats_gui = ship_stats
+MOCK_FLEET.ship_stats_window = ship_stats
 MOCK_FLEET.weapon_list_gui = weapon_list
-MOCK_FLEET.gui_callbacks["ship_card"] = ship_card
-MOCK_FLEET.gui_callbacks["ship_stats"] = ship_stat
+MOCK_FLEET.gui_callbacks["list_item"] = list_item
 
 for s in api.list_ships():
     if s["name"]:
         if (("bounds" in s)
             and not (s["hints"] and "UNBOARDABLE" in s["hints"])
             and (s["hullSize"] != "FIGHTER")):
-            ship_card(ship_list, s)
+            list_item(ship_list, s["name"], (("+", s, lambda x: MOCK_FLEET.ships.append(Ship(x, view_port, view, mouse, MOCK_FLEET))),))

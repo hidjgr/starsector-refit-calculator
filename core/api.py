@@ -95,7 +95,3 @@ def new_battle():
 
 def new_fleet():
     pass
-
-
-def add_ship():
-    pass
