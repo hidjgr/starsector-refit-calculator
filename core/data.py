@@ -1,4 +1,5 @@
 import math
+from core.api import list_weapons
 
 SHIP_COUNTER = [0]
 
@@ -29,7 +30,7 @@ class Fleet:
         self.focused_ship = None
 
         self.ship_stats_window = None
-        self.weapon_list_gui = None
+        self.weapon_list_window = None
 
         self.gui_callbacks = {}
 
@@ -45,14 +46,21 @@ class Fleet:
         self.mouse[1][1] = event.y
 
         for s in self.ships:
-            if s.update_handle_focus(event) or s.update_slot_focus(event):
+            uhf = s.update_handle_focus(event)
+            usf = s.update_slot_focus(event)
+            if uhf or usf:
                 self.focused_ship = s.ship_id
                 self.update_window(self.ship_stats_window, s.show_stats)
+                if usf:
+                    self.update_window(self.weapon_list_window, s.show_weapons)
+
                 
     def update_window(self, win, source):
+        pos = win.master.yview()[0]
         for v in list(win.children.values()):
             v.destroy()
         source(lambda *args: self.gui_callbacks["list_item"](win, *args))
+        win.master.after_idle(lambda: win.master.yview_moveto(pos))
 
     def right_click(self, event):
         self.target_pos_x =   event.x - self.center_x - self.view[0]
@@ -103,6 +111,12 @@ class Fleet:
 
         self.mouse[1][0] = event.x
         self.mouse[1][1] = event.y
+
+
+class Hullmod:
+    
+    def __init__(self):
+        pass
 
 
 class Ship:
@@ -267,6 +281,11 @@ class Ship:
         return self.canvas.create_line(points, fill="grey")
 
     def draw_weapons(self):
+        def arc_radius(slot):
+            if self.weapons[slot["id"]]:
+                return self.weapons[slot["id"]]["range"]
+            return 50
+
         for slot in self.data["weaponSlots"]:
 
             if slot["mount"] == "HIDDEN" or slot["type"] in ("SYSTEM", "DECORATIVE", "STATION_MODULE"):
@@ -283,7 +302,7 @@ class Ship:
             arc_points = self.get_arc_points(
                     *self._rotate_translate(slot["locations"][0],
                                             slot["locations"][1]),
-                    50, slot["angle"]+self.rot*180/math.pi, slot["arc"])
+                    arc_radius(slot), slot["angle"]+self.rot*180/math.pi, slot["arc"])
 
             back_arc_points = self.get_arc_points(
                     *self._rotate_translate(slot["locations"][0],
@@ -334,3 +353,19 @@ class Ship:
 
         callback("Capacitors: " + str(self.capacitors), (("-", None, lambda x: change_attr("cap", -1)), ("+", None, lambda x: change_attr("cap", 1))))
         callback("Vent: " + str(self.vents), (("-", None, lambda x: change_attr("vent", -1)), ("+", None, lambda x: change_attr("vent", 1))))
+
+        for k, v in self.data.items():
+            callback(k + " : " + str(v))
+
+    def show_weapons(self, callback):
+
+        def select_weapon(weapon):
+            self.weapons[self.focused_slot] = weapon
+            self.update_ship(None)
+
+        slot = [i for i in self.data["weaponSlots"] if i["id"] == self.focused_slot][0]
+
+        weapons = list_weapons(slot["size"], slot["type"])
+        
+        for w in weapons:
+            callback(w["name"], (("CLR", None, lambda x: select_weapon(None)), ("SEL", None, lambda x: select_weapon(w))))

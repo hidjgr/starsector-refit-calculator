@@ -1,11 +1,20 @@
-import core.data as data
+# import core.data as data
 import csv
 import json
 import os
 import re
 from re import match
 
-files = data.Files()
+
+class Files:
+
+    def __init__(self):
+        self.game_path = None
+
+    def set_game_path(self, game_path):
+        self.game_path = game_path
+
+files = Files()
 
 def get_game_path(game_path):
     try:
@@ -53,7 +62,28 @@ def list_ships():
         return ships
 
 
-def list_weapons():
+def list_weapons(slot_size, slot_type):
+
+    def filter(weapon):
+
+        if ("size" not in weapon) or (weapon["hints"] and ("SYSTEM" in weapon["hints"])):
+            return
+
+        types = {"HYBRID": ["BALLISTIC", "ENERGY"],
+                 "COMPOSITE": ["BALLISTIC", "MISSILE"],
+                 "SYNERGY": ["MISSILE", "ENERGY"],
+                 "UNIVERSAL": ["BALLISTIC", "MISSILE", "ENERGY"]}
+
+        sizes = {"SMALL": 1, "MEDIUM": 2, "LARGE": 3}
+
+        print({"name": weapon["name"]} | {"size": weapon["size"]} | {"type": weapon["type"]})
+        print({"slot type": slot_type, "slot size": slot_size})
+
+        is_ds_fit = (weapon["type"] == slot_type) and (sizes[weapon["size"]] <= sizes[slot_size])
+        is_no_ds_fit = (slot_type in types) and (weapon["type"] in types[slot_type]) and (weapon["size"] == slot_size)
+
+        return is_ds_fit or is_no_ds_fit
+
 
     with open(files.game_path + "/weapons/weapon_data.csv", "r") as f:
         reader = csv.DictReader(f)
@@ -85,7 +115,8 @@ def list_weapons():
                     raise
                 except FileNotFoundError: 
                     print(f"File not found: {new_weapon['id']}.wpn")
-                weapons.append(new_weapon)
+                if filter(new_weapon):
+                    weapons.append(new_weapon)
         return weapons
 
         

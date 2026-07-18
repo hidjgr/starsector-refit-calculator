@@ -69,6 +69,7 @@ def scrolling_canvas(parent, height, width):
             canvas.yview_scroll(1, "units")
 
 
+
     def _bind_mousewheel(event):
         canvas.bind_all("<Button-4>", _on_mousewheel)
         canvas.bind_all("<Button-5>", _on_mousewheel)
@@ -99,17 +100,17 @@ def list_item(parent, label, buttons=None):
     rowframe.pack(fill="x", expand=True)
     return rowframe
 
-ship_list_root, ship_list = scrolling_canvas(main, 500//3, 200)
+ship_list_root, ship_list = scrolling_canvas(main, 500//3, 300)
 ship_list_root.grid(row=0, column=1)
 
-ship_stats_root, ship_stats = scrolling_canvas(main, 500//3, 200)
+ship_stats_root, ship_stats = scrolling_canvas(main, 500//3, 300)
 ship_stats_root.grid(row=1, column=1)
 
-weapon_list_root, weapon_list = scrolling_canvas(main, 500//3, 200)
+weapon_list_root, weapon_list = scrolling_canvas(main, 500//3, 300)
 weapon_list_root.grid(row=2, column=1)
 
 MOCK_FLEET.ship_stats_window = ship_stats
-MOCK_FLEET.weapon_list_gui = weapon_list
+MOCK_FLEET.weapon_list_window = weapon_list
 MOCK_FLEET.gui_callbacks["list_item"] = list_item
 
 for s in api.list_ships():
