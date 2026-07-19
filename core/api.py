@@ -76,9 +76,6 @@ def list_weapons(slot_size, slot_type):
 
         sizes = {"SMALL": 1, "MEDIUM": 2, "LARGE": 3}
 
-        print({"name": weapon["name"]} | {"size": weapon["size"]} | {"type": weapon["type"]})
-        print({"slot type": slot_type, "slot size": slot_size})
-
         is_ds_fit = (weapon["type"] == slot_type) and (sizes[weapon["size"]] <= sizes[slot_size])
         is_no_ds_fit = (slot_type in types) and (weapon["type"] in types[slot_type]) and (weapon["size"] == slot_size)
 

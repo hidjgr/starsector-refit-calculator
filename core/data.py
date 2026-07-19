@@ -73,16 +73,16 @@ class Fleet:
                 self.canvas.delete(i)
 
         id1 = self.canvas.create_line(
-                self.target_pos_x - 5 + self.center_x + self.view[0],
-              - self.target_pos_y - 5 + self.center_y + self.view[1],
-                self.target_pos_x + 6 + self.center_x + self.view[0],
-              - self.target_pos_y + 6 + self.center_y + self.view[1],
-                fill="blue")
+              self.view[2] * (  self.target_pos_x - 5 + self.view[0]) + self.center_x,
+              self.view[2] * (- self.target_pos_y - 5 + self.view[1]) + self.center_y,
+              self.view[2] * (  self.target_pos_x + 6 + self.view[0]) + self.center_x,
+              self.view[2] * (- self.target_pos_y + 6 + self.view[1]) + self.center_y,
+                fill="blue")                                        
         id2 = self.canvas.create_line(
-                self.target_pos_x - 5 + self.center_x + self.view[0],
-              - self.target_pos_y + 5 + self.center_y + self.view[1],
-                self.target_pos_x + 6 + self.center_x + self.view[0],
-              - self.target_pos_y - 6 + self.center_y + self.view[1],
+              self.view[2] * (  self.target_pos_x - 5 + self.view[0]) + self.center_x,
+              self.view[2] * (- self.target_pos_y + 5 + self.view[1]) + self.center_y,
+              self.view[2] * (  self.target_pos_x + 6 + self.view[0]) + self.center_x,
+              self.view[2] * (- self.target_pos_y - 6 + self.view[1]) + self.center_y,
                 fill="blue")
 
         self.target_ids = (id1, id2)
@@ -112,6 +112,13 @@ class Fleet:
         self.mouse[1][0] = event.x
         self.mouse[1][1] = event.y
 
+    def mw_up(self, event):
+        self.view[2] *= 1.1
+        self.update_fleet(event)
+
+    def mw_down(self, event):
+        self.view[2] /= 1.1
+        self.update_fleet(event)
 
 class Hullmod:
     
@@ -174,15 +181,15 @@ class Ship:
             return math.atan2(x, y) + rot
         def rotate_comp(x, y, f):
             return f(add_angle(x, y)) * norm(x, y)
-        return (self.center_x + self.view[0] + self.pos_x + rotate_comp(x, -y, math.cos),
-                self.center_y + self.view[1] - self.pos_y - rotate_comp(x, -y, math.sin))
+        return (self.center_x + self.view[2] * (self.view[0] + self.pos_x + rotate_comp(x, -y, math.cos)),
+                self.center_y + self.view[2] * (self.view[1] - self.pos_y - rotate_comp(x, -y, math.sin)))
 
     def update_ship(self, event):
         self.draw(event)
 
     def update_handle_focus(self, event):
         mx1, my1, mx2, my2 = self.get_handle_bounds(0, 0)
-        rx1, ry1, rx2, ry2 = self.get_handle_bounds(30, 30)
+        rx1, ry1, rx2, ry2 = self.get_handle_bounds(30 / self.view[2], 30 / self.view[2])
 
         if (mx1 <= event.x <= mx2) and (my1 <= event.y <= my2):
             for s in self.fleet.ships:
@@ -221,12 +228,12 @@ class Ship:
             return False
 
         if self.handle_focus == 1:
-            self.pos_x += - self.pos_x - self.view[0] + event.x - self.center_x
-            self.pos_y += - self.pos_y + self.view[1] - event.y + self.center_y
+            self.pos_x += self.view[2] * (- self.pos_x - self.view[0]) + event.x - self.center_x
+            self.pos_y += self.view[2] * (- self.pos_y + self.view[1]) - event.y + self.center_y
         if self.handle_focus == 2:
             self.rot = - math.pi/4 + math.atan2(
-                - self.pos_y + self.view[1] - event.y + self.center_y,
-                - self.pos_x - self.view[0] + event.x - self.center_x)
+                self.view[2] * (- self.pos_y + self.view[1]) - event.y + self.center_y,
+                self.view[2] * (- self.pos_x - self.view[0]) + event.x - self.center_x)
 
         self.update_ship(event)
 
@@ -242,8 +249,8 @@ class Ship:
         def norm(x, y):
             return (x**2 + y**2)**(1/2)
 
-        distance = norm(event.x - self.center_x - self.view[0] - self.pos_x,
-                        event.y - self.center_y - self.view[1] + self.pos_y)
+        distance = norm(event.x - self.center_x + self.view[2] * (- self.view[0] - self.pos_x),
+                        event.y - self.center_y + self.view[2] * (- self.view[1] + self.pos_y))
 
         if distance < 50:
             self.draw_move_handle()
@@ -283,8 +290,8 @@ class Ship:
     def draw_weapons(self):
         def arc_radius(slot):
             if self.weapons[slot["id"]]:
-                return self.weapons[slot["id"]]["range"]
-            return 50
+                return self.weapons[slot["id"]]["range"] * self.view[2]
+            return 50 * self.view[2]
 
         def arc_fill(slot):
             if self.weapons[slot["id"]]:
@@ -346,7 +353,7 @@ class Ship:
         self.clear_rotate_handle()
 
         self.canvas_rotate_handle_id = self.canvas.create_rectangle(
-                *self.get_handle_bounds(30, 30),
+                *self.get_handle_bounds(30 / self.view[2], 30 / self.view[2]),
                 fill="red")
 
     def show_stats(self, callback):

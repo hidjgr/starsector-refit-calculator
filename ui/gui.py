@@ -25,6 +25,8 @@ def create_view_port(height=500, width=500):
     canvas.bind("<ButtonRelease-1>", lambda event: MOCK_FLEET.release(event))
     canvas.bind("<B1-Motion>", lambda event: MOCK_FLEET.drag(event))
     canvas.bind("<Button-3>", lambda event: MOCK_FLEET.right_click(event))
+    canvas.bind("<Button-4>", lambda event: MOCK_FLEET.mw_up(event))
+    canvas.bind("<Button-5>", lambda event: MOCK_FLEET.mw_down(event))
 
     MOCK_FLEET.canvas = canvas
     MOCK_FLEET.center_x = height // 2
