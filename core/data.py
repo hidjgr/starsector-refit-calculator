@@ -277,14 +277,19 @@ class Ship:
             points.append(cy - math.cos(point) * radius)
         return points
 
-    def draw_arc(self, points):
-        return self.canvas.create_line(points, fill="grey")
+    def draw_arc(self, points, fill="grey"):
+        return self.canvas.create_line(points, fill=fill)
 
     def draw_weapons(self):
         def arc_radius(slot):
             if self.weapons[slot["id"]]:
                 return self.weapons[slot["id"]]["range"]
             return 50
+
+        def arc_fill(slot):
+            if self.weapons[slot["id"]]:
+                return "yellow"
+            return "grey"
 
         for slot in self.data["weaponSlots"]:
 
@@ -309,11 +314,13 @@ class Ship:
                                             slot["locations"][1]),
                     10, (180+slot["angle"]+self.rot*180/math.pi)%360, 360-slot["arc"])
 
-            self.weapon_canvas_ids[slot["id"]][1] = self.draw_arc(arc_points)
-            self.weapon_canvas_ids[slot["id"]][2] = self.draw_arc(back_arc_points)
+            fill = arc_fill(slot)
 
-            self.weapon_canvas_ids[slot["id"]][3] = self.canvas.create_line(arc_points[:2], back_arc_points[-2:], fill="grey")
-            self.weapon_canvas_ids[slot["id"]][4] = self.canvas.create_line(arc_points[-2:], back_arc_points[:2], fill="grey")
+            self.weapon_canvas_ids[slot["id"]][1] = self.draw_arc(arc_points, fill)
+            self.weapon_canvas_ids[slot["id"]][2] = self.draw_arc(back_arc_points, fill)
+
+            self.weapon_canvas_ids[slot["id"]][3] = self.canvas.create_line(arc_points[:2], back_arc_points[-2:], fill=fill)
+            self.weapon_canvas_ids[slot["id"]][4] = self.canvas.create_line(arc_points[-2:], back_arc_points[:2], fill=fill)
 
     def get_handle_bounds(self, cx, cy):
         return tuple(i+j for i in (-3, 3) for j in self._rotate_translate(cx, -cy))
